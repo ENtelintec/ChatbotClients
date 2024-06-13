@@ -11,3 +11,4 @@ Unidecode~=1.3.7
 Pillow~=10.1.0
 openai~=1.22.0
 SQLAlchemy~=2.0.23
+heyoo~=0.1.2

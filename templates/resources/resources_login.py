@@ -8,7 +8,7 @@ from static.Models.api_models import token_model
 from templates.Functions_Text import parse_data
 from templates.controllers.employees.us_controller import verify_user_DB, get_permissions_user_password
 
-ns = Namespace('IA/api/v1/auth')
+ns = Namespace('IA/api/v1/webchat')
 
 
 @ns.route('/loginUP')
