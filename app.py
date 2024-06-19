@@ -4,7 +4,6 @@ from flask_cors import CORS
 from static.extensions import api, secrets, client_id
 from templates.Functions_Aux import parse_message, retrieve_conversation, message_handler, send_reply_whatsapp
 from templates.controllers.chats_controller import upd_chats_msg, insert_chat, finalize_chat
-from templates.resources.resources_login import ns as ns_login
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
@@ -19,7 +18,9 @@ def hello_world():  # put application's code here
 @app.route("/IA/api/v1/whatsapp", methods=["POST", "GET"])
 def whatsapp_webhook_handler():
     # hub challenge verification
+    print(secrets['VERIFY_TOKEN_WA'])
     if request.method == "GET":
+        print(request.args.get('hub.verify_token'))
         if request.args.get('hub.verify_token') == secrets['VERIFY_TOKEN_WA']:
             return request.args.get('hub.challenge')
         else:
@@ -66,7 +67,6 @@ def whatsapp_webhook_handler():
 
 
 api.init_app(app)
-api.add_namespace(ns_login)
 
 if __name__ == '__main__':
     app.run()
