@@ -3,61 +3,71 @@ __author__ = 'Edisson Naula'
 __date__ = '$ 13/jun./2024  at 17:04 $'
 
 import json
+from datetime import datetime
 
+from static.extensions import format_timestamps
 from templates.database.connection import execute_sql
 
 
-def upd_chats_msg(chat_id: str, context: list, timestamp: str,
-                  is_end: bool, sender_id: str, receiver_id: str,
-                  platform: str, f_create: bool):
+def insert_chat(context: list, sender_id: str, client_id: str, platform: str, thread_id: str):
     """
-    Updates the database based on the parameter provided.
-    If the conversation is finished, then the timestamp_end is updated.
-    If the conversation is not finished, then the context is updated.
-    If the conversation has finished and the register must be created,
-    then a new register must be created.
+    Inserts a new chat into the database.
 
-    :param chat_id: <string> id of the conversation
     :param context: <list> list of dictionaries with the context of the conversation
-    :param timestamp: <string> timestamp of the message
-    :param is_end: <boolean> flag indicating if the conversation have finished
     :param sender_id: <string> id of the sender
-    :param receiver_id: <string> id of the receiver
+    :param client_id: <string> id of the receiver
     :param platform: <string> platform of the conversation
-    :param f_create: <boolean> flag indicating if the register must be created
+    :param thread_id: <string> id of the thread
     """
-    if is_end:
-        sql = "UPDATE chats " \
-              "SET context = %s, timestamp_end = %s, is_alive = %s " \
-              "WHERE chat_id = %s"
-        val = (json.dumps(context), timestamp, '0', chat_id)
-        flag, error, result = execute_sql(sql, val, 3)
-        print(f"flag: {flag}")
-        if not flag:
-            print("Error: {}".format(error))
-        else:
-            print("Update successful")
+    timestamp = datetime.now().strftime(format_timestamps)
+    metadata = {
+        "platform": platform,
+        "thread_id": thread_id,
+        "timestamp_start": timestamp,
+        "sender_id": sender_id,
+        "timestamp_end": "",
+        "is_alive": 1
+    }
+    sql = "INSERT INTO telintec_clts_chats.chats " \
+          "(content, metadata, client_id) " \
+          "VALUES (%s, %s, %s)"
+    val = (json.dumps(context), json.dumps(metadata), client_id)
+    flag, error, result = execute_sql(sql, val, 3)
+    if not flag:
+        print("Error: {}".format(error))
     else:
-        if f_create:
-            sql = "INSERT INTO chats " \
-                  "(context, timestamp_start, timestamp_end," \
-                  " receiver_id, sender_id, platform, is_alive) " \
-                  "VALUES (%s, %s, %s, %s, %s, %s, %s)"
-            val = (json.dumps(context), timestamp, timestamp,
-                   receiver_id, sender_id, platform, '1')
-            flag, error, result = execute_sql(sql, val, 3)
-            if not flag:
-                print("Error: {}".format(error))
-            else:
-                print("Insert successful")
-        else:
-            sql = "UPDATE chats SET context = %s, timestamp_end = %s " \
-                  "WHERE chat_id = %s"
-            val = (json.dumps(context), timestamp, chat_id)
-            print("trying to  update")
-            flag, error, result = execute_sql(sql, val, 3)
-            if not flag:
-                print("Error: {}".format(error))
-            else:
-                print("Update successful")
+        print("Insert successful")
+
+
+def upd_chats_msg(chat_id: str, context: list, sender_id: str, client_id: str, platform: str, thread_id: str):
+    """
+    Updates the chat message in the database.
+
+    :param chat_id: <string> id of the chat
+    :param context: <list> list of dictionaries with the context of the conversation
+    :param sender_id: <string> id of the sender
+    :param client_id: <string> id of the receiver
+    :param platform: <string> platform of the conversation
+    :param thread_id: <string> id of the thread
+    """
+    timestamp = datetime.now().strftime(format_timestamps)
+    metadata = {
+        "platform": platform,
+        "thread_id": thread_id,
+        "timestamp_end": timestamp,
+        "sender_id": sender_id,
+        "is_alive": 0
+    }
+    sql = "UPDATE telintec_clts_chats.chats " \
+          "SET content = %s, metadata = %s " \
+          "WHERE chat_id = %s"
+    val = (json.dumps(context), json.dumps(metadata), chat_id)
+    flag, error, result = execute_sql(sql, val, 3)
+    if not flag:
+        print("Error: {}".format(error))
+        print("Update failed")
+        return False
+    else:
+        print("Update successful")
+        return True
 

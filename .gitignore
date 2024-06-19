@@ -169,3 +169,7 @@ cython_debug/
 /.idea/ruff.xml
 /.idea/vcs.xml
 /.idea/.gitignore
+
+tester.py
+/files/*.pdf
+/Notebook_tester.ipynb

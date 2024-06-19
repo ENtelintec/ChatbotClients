@@ -4,19 +4,20 @@ __date__ = '$ 26/dic./2023  at 14:35 $'
 
 import json
 import time
+from typing import Any, Tuple
 
 import openai
 from openai import OpenAI
 
-from static.extensions import secrets, department_tools_openAI
-from templates.Function_tools_openAI import getToolsForDepartment
+from static.extensions import secrets, AV_avaliable_tools_files
+from templates.Function_tools_openAI import getInfoForSalesContact
 
-client = OpenAI(api_key=secrets.get("OPENAI_API_KEY_AV"))
-openai.api_key = secrets["OPENAI_API_KEY_AV"]
+client = OpenAI(api_key=secrets.get("OPENAI_API_KEY_DEMOS"))
+openai.api_key = secrets["OPENAI_API_KEY_DEMOS"]
 
 available_functions = {
-        "getToolsForDepartment": getToolsForDepartment
-    }
+    "getInfoForSalesContact": getInfoForSalesContact
+}
 
 
 def create_assistant_openai(model="gpt-4-1106-preview", files=None, instructions=None, tools=None):
@@ -118,7 +119,8 @@ def retrieve_runs_openai(thread_id, run_id):
                 run_id=run_id
             )
             if runs.status == "requires_action":
-                completed_actions, error = complete_required_actions(runs.required_action.submit_tool_outputs.tool_calls, thread_id, run_id)
+                completed_actions, error = complete_required_actions(
+                    runs.required_action.submit_tool_outputs.tool_calls, thread_id, run_id)
                 if error is not None:
                     print("Error at completing required tool: ", error)
                     runs = None
@@ -169,45 +171,67 @@ def get_response_chat_completion(messages: list) -> str:
     return out.choices[0].message.content
 
 
-def get_response_assistant(message: str, filename: str, files: list = None, instructions: str = None, department=None) -> tuple[list | None, str]:
+def get_response_assistant(message: str, filename: str = None, files: list = None, instructions: str = None,
+                           client_tag=None, thread_id=None, assistant_id=None) -> \
+        tuple[list | Any, str, str | None | Any, str | Any]:
     """
     Receives context and conversation with the bot and return a
     message from the bot.
 
+    :param assistant_id:
+    :param thread_id:
     :param filename: file to use
-    :param department:
+    :param client_tag:
     :param instructions:
     :param files: list of files to upload
     :param message:message
     :return: answer (string)
     """
     # json.loads(open('context.json', encoding='utf-8').read())["context"]]
-    tools = json.loads(open(department_tools_openAI[department.lower()], encoding='utf-8').read())
+    data_av_tools_files = json.loads(open(AV_avaliable_tools_files[client_tag.lower()], encoding='utf-8').read())
+    tools = data_av_tools_files["tools"]
     e = None
     answer = ""
     files_assistat_ids = []
-    if len(files) > 0:
+    if files is None:
+        files = data_av_tools_files["files"]
         for i, item in enumerate(files):
-            if item["name"] == filename:
-                files_assistat_ids.append(item["file_id"])
-                break
+            files_assistat_ids.append(item["id"])
+    else:
+        if len(files) > 0:
+            for i, item in enumerate(files):
+                if item["name"] == filename:
+                    files_assistat_ids.append(item["id"])
+                    break
+    first_flag = False
+    if thread_id is None:
+        first_flag = True
+        try:
+            assistant, error = create_assistant_openai(files=files_assistat_ids, instructions=instructions, tools=tools)
+            assistant_id = assistant.id
+            print("first time creation")
+        except Exception as e:
+            print("Error at creating assistant on openAI: ", e)
+            return files, "Error at creating assistant on openAI", "None", "None"
     try:
-        assistant, error = create_assistant_openai(files=files_assistat_ids, instructions=instructions, tools=tools)
-    except Exception as e:
-        print("Error at creating assistant on openAI: ", e)
-        return files, "Error at creating assistant on openAI"
-    try:
-        thread, error = create_thread_openai()
-        message_obj, error = create_message_openai(thread.id, message, "user")
-        run, error = run_thread_openai(thread.id, assistant.id)
-        run, error = retrieve_runs_openai(thread.id, run.id)
-        msgs, error = retrieve_messages_openai(thread.id)
-        for msg in reversed(msgs.data):
-            answer += msg.content[0].text.value + "\n" if msg.role == "assistant" else ""
+        if first_flag:
+            thread, error = create_thread_openai()
+            thread_id = thread.id
+            print("first time")
+        message_obj, error = create_message_openai(thread_id, message, "user")
+        run, error = run_thread_openai(thread_id, assistant_id)
+        run, error = retrieve_runs_openai(thread_id, run.id)
+        msgs, error = retrieve_messages_openai(thread_id)
+        for msg in msgs.data:
+            if msg.role == "user":
+                continue
+            answer = msg.content[0].text.value + "\n" if msg.role == "assistant" else ""
+            break
+        # answer = msgs
     except Exception as e:
         print("Catching Error at getting response on openAI: ", e)
-        return files, f"Catching Error at getting response on openAI: {e}"
-    return files, answer
+        return files, f"Catching Error at getting response on openAI: {e}", "None", "None"
+    return files, answer, thread_id, assistant_id
 
 
 def get_files_list_openai():

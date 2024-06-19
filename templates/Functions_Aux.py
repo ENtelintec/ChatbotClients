@@ -7,7 +7,8 @@ import re
 import time
 from datetime import datetime
 from heyoo import WhatsApp
-from static.extensions import secrets
+from static.extensions import secrets, client_name
+from templates.Functions_openAI import get_response_assistant
 from templates.database.connection import execute_sql
 
 
@@ -135,7 +136,13 @@ def message_handler(msg: str, context: list, chat_id: str, sender_id: str) -> tu
         res, context = command_handler(command, context, chat_id, sender_id)
         print("command: ", res)
     else:
-        res = get_response(context)
+        # res = get_response(context)
+        instructions = (
+            f"Act as an Virtual Assistant, you work aiding in a telecomunications enterprise called Telintec.\n "
+            f"You help in the {department} and you answer are concise and precise.\n"
+            f"Ask for clarification if a user request is ambiguous\n."
+            f"You answer in {settings['language']}.")
+        files_av, res, thread_id = get_response_assistant(msg, instructions=instructions, client_tag=client_name)
         command, res, flag_search = extract_command(res)
         print("answer: {} command: {} flag_search: {}".format(res, command, flag_search))
     return res, command, flag_search, context
