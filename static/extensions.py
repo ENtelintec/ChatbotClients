@@ -2,11 +2,9 @@
 __author__ = "Edisson Naula"
 __date__ = "$ 02/nov./2023  at 17:32 $"
 
-import json
 
 from dotenv import dotenv_values
 from flask_restx import Api
-from pathlib import Path
 
 model_openai = "gpt-4-0613"
 # local_father_path_dpb = "C:/Users/Edisson/Telintec Dropbox/SOFTWARE TELINTEC"

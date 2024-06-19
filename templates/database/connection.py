@@ -7,9 +7,9 @@ import mysql.connector
 
 from static.extensions import secrets
 
-host_db_default = "HOST_DB"
-user_db_default = "USER_SQL"
-pass_db_default = "PASS_SQL"
+host_db_default = "HOST_DB_AWS"
+user_db_default = "USER_SQL_AWS"
+pass_db_default = "PASS_SQL_AWS"
 
 
 def connectionDB():

@@ -4,7 +4,6 @@ __date__ = '$ 26/dic./2023  at 14:35 $'
 
 import json
 import time
-from typing import Any, Tuple, Dict
 
 import openai
 from openai import OpenAI
@@ -177,8 +176,7 @@ def get_response_chat_completion(messages: list) -> str:
 
 
 def get_response_assistant(message: str, filename: str = None, files: list = None, instructions: str = None,
-                           client_tag=None, thread_id=None, assistant_id=None) -> \
-        tuple[list | Any, str | Any, str | None | Any, str | Any, dict[Any, Any] | None]:
+                           client_tag=None, thread_id=None, assistant_id=None) -> tuple:
     """
     Receives context and conversation with the bot and return a
     message from the bot.

@@ -10,7 +10,6 @@ from heyoo import WhatsApp
 from static.extensions import secrets, client_name, AV_avaliable_tools_files, format_timestamps
 from templates.Functions_openAI import get_response_assistant
 from templates.controllers.chats_controller import get_chats_msg
-from templates.database.connection import execute_sql
 
 
 def send_reply_whatsapp(phone, answer):
