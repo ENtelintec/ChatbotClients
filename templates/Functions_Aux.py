@@ -5,34 +5,12 @@ __date__ = '$ 13/jun./2024  at 16:55 $'
 import json
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from heyoo import WhatsApp
-from static.extensions import secrets, client_name
+from static.extensions import secrets, client_name, AV_avaliable_tools_files, format_timestamps
 from templates.Functions_openAI import get_response_assistant
+from templates.controllers.chats_controller import get_chats_msg
 from templates.database.connection import execute_sql
-
-
-def search_handler(command: str, currency) -> str:
-    """
-    Search in the database according to the command input by the chatbot.
-    :param currency:
-    :param command: <string>
-    :return: Response with the list of products or a none result response
-    :rtype: str
-    """
-    res = ""
-    if command != "":
-        my_result = search_sql(command)
-        print(my_result)
-        if my_result.__len__() != 0:
-            res = present_list(my_result, currency)
-        else:
-            res = "No se encontraron  resultados"
-    else:
-        print("no matched command search")
-    if res.__contains__("ERROR:root:Response"):
-        res = "Restart the conversation"
-    return res
 
 
 def send_reply_whatsapp(phone, answer):
@@ -117,9 +95,11 @@ def extract_command(res: str) -> list:
     return [command, res, flag_search]
 
 
-def message_handler(msg: str, context: list, chat_id: str, sender_id: str) -> tuple:
+def message_handler(msg: str, context: list, chat_id: str, sender_id: str, assistant_id=None, thread_id=None) -> tuple:
     """
-    Obtains an answer from the chatbot based on the message received.
+    Gets an answer from the chatbot based on the message received.
+    :param thread_id:
+    :param assistant_id:
     :param sender_id: id of the sender
     :param chat_id: chat id in the database
     :param context: chain of messages
@@ -130,57 +110,48 @@ def message_handler(msg: str, context: list, chat_id: str, sender_id: str) -> tu
     flag_search: <bool> flag to search for the command
     context: <list> context of the conversation
     """
-    flag_search = False
+    flags = None
     if msg.startswith('/'):
         command = command_simplifier(msg[1:])
         res, context = command_handler(command, context, chat_id, sender_id)
         print("command: ", res)
     else:
-        # res = get_response(context)
-        instructions = (
-            f"Act as an Virtual Assistant, you work aiding in a telecomunications enterprise called Telintec.\n "
-            f"You help in the {department} and you answer are concise and precise.\n"
-            f"Ask for clarification if a user request is ambiguous\n."
-            f"You answer in {settings['language']}.")
-        files_av, res, thread_id = get_response_assistant(msg, instructions=instructions, client_tag=client_name)
+        data_av = json.loads(open(AV_avaliable_tools_files[client_name.lower()], encoding='utf-8').read())
+        instructions = data_av["instructions"]
+        files_av, res, thread_id, assistant_id, flags = get_response_assistant(
+            msg, instructions=instructions, client_tag=client_name, thread_id=thread_id, assistant_id=assistant_id)
         command, res, flag_search = extract_command(res)
         print("answer: {} command: {} flag_search: {}".format(res, command, flag_search))
-    return res, command, flag_search, context
+    return res, command, context, thread_id, assistant_id, flags
 
 
-def retrieve_conversation(sender_id: str, receiver_id: str) -> tuple:
+def retrieve_conversation(sender_id: str) -> tuple:
     """
     if a conversation is present in the database that complains with the
     sender_id and receiver_id, then it is returned the previous context.
     if not, then it is created a simple json context and a flag raised indicating
     a new register must be created in the database.
-
     :param sender_id: <string> sender identification
-    :param receiver_id: <string> receiver identification
     :return: <list> [<chat_id>, <res>, <flag>]
         <chat_id>: <int> chat_id
         <res>: <list> json context
         <flag>: <bool> flag indicating if a new register must be created
         in the database
     """
-    sql = "SELECT context, chat_id FROM chats " \
-          "WHERE sender_id = %s AND receiver_id = %s " \
-          "AND timestampdiff(MINUTE, timestamp_end, %s)<5 " \
-          "AND is_alive = %s"
-    time_now = time.strftime("%Y-%m-%d, %H:%M:%S", time.localtime())
-    val = (sender_id, receiver_id, time_now, '1')
-    # my_cursor.execute(sql, val)
-    # my_result = my_cursor.fetchall()
-    my_result = execute_sql(sql, val, 2)
-    chat_id = 0
-    flag = True
-    res = [json.loads(open('context_handler.json', encoding='utf-8').read())["context"]]
-    if my_result is not None:
-        if my_result.__len__() > 0:
-            res = json.loads(my_result[0][0])
-            chat_id = my_result[0][1]
-            flag = False
-    return chat_id, res, flag
+    time_now = datetime.now()
+    flag, error, my_result = get_chats_msg(sender_id)
+    if flag and len(my_result) > 0:
+        for item in my_result:
+            chat_id = item[0]
+            metadata = item[1]
+            content = item[2]
+            timestamp_end = metadata.get("timestamp_end")
+            if timestamp_end == "":
+                continue
+            timestamp_end = datetime.strptime(timestamp_end, format_timestamps)
+            if time_now < timestamp_end + timedelta(minutes=5):
+                return chat_id, content, metadata, False
+    return None, [], {}, True
 
 
 def process_message_attachment(attachment: any):
@@ -225,27 +196,13 @@ def parse_message(data, platform: str) -> tuple:
     :return: <tuple> [<sender_id>, <text>, <timestamp>, <receiver_id>,
      <attachment>, <is_status>]
     """
-    timestamp = time.strftime("%Y-%m-%d, %H:%M:%S", time.localtime())
-    receiver_id = "11"
+    timestamp = time.strftime(format_timestamps, time.localtime())
     attachment = []
     txt = ""
     sender_id = ""
     is_status = False
-    currency = "MXN"
     try:
-        if platform == "facebook":
-            print("message F-->", data)
-            for event in data['entry']:
-                messaging = event['messaging']
-                for msg in messaging:
-                    if msg.get('message'):
-                        sender_id = msg['sender']['id']
-                        if msg['message'].get('text'):
-                            txt = msg['message']['text']
-                        if msg['message'].get('attachments'):
-                            attachment = process_message_attachment(
-                                msg['message']['attachments'])
-        elif platform == "whatsapp":
+        if platform == "whatsapp":
             print("message W -->", data)
             entry = data['entry'][0]['changes'][0]['value']
             if 'messages' in entry:
@@ -265,28 +222,10 @@ def parse_message(data, platform: str) -> tuple:
             else:
                 is_status = True
                 print("message Ws not recognized")
-        elif platform == "telegram":
-            print("message T-->", data)
-            sender_id = data['message']['chat']['id']
-            txt = data['message']['text']
-        elif platform == "webchat":
-            print("message WC-->", data)
-            sender_id = data['chat_id']
-            txt = data['message']
-            if sender_id == "" or sender_id is None:
-                is_status = True
-            else:
-                if not check_syntax(sender_id):
-                    is_status = True
-            try:
-                currency = data['currency']
-            except Exception as e:
-                print("error: ", e)
-                currency = "MXN"
         else:
             print("message O-->", data)
-        return sender_id, txt, timestamp, receiver_id, attachment, is_status, currency
+        return sender_id, txt, timestamp, attachment, is_status
     except Exception as e:
         print("error: ", e)
         is_status = True
-        return sender_id, txt, timestamp, receiver_id, attachment, is_status, currency
+        return sender_id, txt, timestamp, attachment, is_status

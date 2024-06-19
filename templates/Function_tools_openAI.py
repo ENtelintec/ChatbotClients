@@ -7,6 +7,9 @@ def getInfoForSalesContact(**kwargs):
     name = None
     email = None
     phone = None
+    flags = {
+        "is_end": True
+    }
     for k, v in kwargs.items():
         match k:
             case "name":
@@ -18,4 +21,4 @@ def getInfoForSalesContact(**kwargs):
             case _:
                 pass
     print(f"Name: {name}, Email: {email}, Phone: {phone}")
-    return ["data recievend a seller will contact the client"]
+    return ["data recievend a seller will contact the client"], flags

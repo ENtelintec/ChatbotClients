@@ -4,7 +4,7 @@ __date__ = '$ 26/dic./2023  at 14:35 $'
 
 import json
 import time
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 
 import openai
 from openai import OpenAI
@@ -81,37 +81,42 @@ def run_thread_openai(thread_id, assistant_id):
 
 def get_tool_outputs(required_actions):
     outputs = []
-
+    all_flags = {}
     for tool in required_actions:
         print(tool)
         arguments = json.loads(tool.function.arguments)
         function_to_call = available_functions[tool.function.name]
-        output = function_to_call(**arguments)
+        output, flags = function_to_call(**arguments)
         outputs.append(
             {
                 "tool_call_id": tool.id,
                 "output": str(output),
             }
         )
-    return outputs
+        if flags is not None:
+            all_flags.update(flags)
+    return outputs, all_flags
 
 
 def complete_required_actions(required_actions, thread_id, run_id):
     e = None
     try:
+        out, flags = get_tool_outputs(required_actions)
         complete_actions = client.beta.threads.runs.submit_tool_outputs(
             thread_id=thread_id,
             run_id=run_id,
-            tool_outputs=get_tool_outputs(required_actions)
+            tool_outputs=out
         )
     except Exception as e:
         print("catch error complete required tool: ", e)
         complete_actions = None
-    return complete_actions, e
+        flags = None
+    return complete_actions, e, flags
 
 
 def retrieve_runs_openai(thread_id, run_id):
     e = None
+    flags = None
     try:
         while True:
             runs = client.beta.threads.runs.retrieve(
@@ -119,7 +124,7 @@ def retrieve_runs_openai(thread_id, run_id):
                 run_id=run_id
             )
             if runs.status == "requires_action":
-                completed_actions, error = complete_required_actions(
+                completed_actions, error, flags = complete_required_actions(
                     runs.required_action.submit_tool_outputs.tool_calls, thread_id, run_id)
                 if error is not None:
                     print("Error at completing required tool: ", error)
@@ -132,7 +137,7 @@ def retrieve_runs_openai(thread_id, run_id):
     except Exception as e:
         print("Error at retrieving runs ", e)
         runs = None
-    return runs, e
+    return runs, e, flags
 
 
 def retrieve_messages_openai(thread_id):
@@ -173,7 +178,7 @@ def get_response_chat_completion(messages: list) -> str:
 
 def get_response_assistant(message: str, filename: str = None, files: list = None, instructions: str = None,
                            client_tag=None, thread_id=None, assistant_id=None) -> \
-        tuple[list | Any, str, str | None | Any, str | Any]:
+        tuple[list | Any, str | Any, str | None | Any, str | Any, dict[Any, Any] | None]:
     """
     Receives context and conversation with the bot and return a
     message from the bot.
@@ -191,6 +196,7 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
     data_av_tools_files = json.loads(open(AV_avaliable_tools_files[client_tag.lower()], encoding='utf-8').read())
     tools = data_av_tools_files["tools"]
     e = None
+    flags = None
     answer = ""
     files_assistat_ids = []
     if files is None:
@@ -212,7 +218,7 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
             print("first time creation")
         except Exception as e:
             print("Error at creating assistant on openAI: ", e)
-            return files, "Error at creating assistant on openAI", "None", "None"
+            return files, "Error at creating assistant on openAI", "None", "None", flags
     try:
         if first_flag:
             thread, error = create_thread_openai()
@@ -220,7 +226,7 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
             print("first time")
         message_obj, error = create_message_openai(thread_id, message, "user")
         run, error = run_thread_openai(thread_id, assistant_id)
-        run, error = retrieve_runs_openai(thread_id, run.id)
+        run, error, flags = retrieve_runs_openai(thread_id, run.id)
         msgs, error = retrieve_messages_openai(thread_id)
         for msg in msgs.data:
             if msg.role == "user":
@@ -230,8 +236,8 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
         # answer = msgs
     except Exception as e:
         print("Catching Error at getting response on openAI: ", e)
-        return files, f"Catching Error at getting response on openAI: {e}", "None", "None"
-    return files, answer, thread_id, assistant_id
+        return files, f"Catching Error at getting response on openAI: {e}", "None", "None", flags
+    return files, answer, thread_id, assistant_id, flags
 
 
 def get_files_list_openai():

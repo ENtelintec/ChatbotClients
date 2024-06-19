@@ -15,7 +15,7 @@
             "phone": {"type": "string", "description": "phone of the client"},
             "email": {"type": "string", "description": "email of the client"}
           },
-          "required": ["name"]
+          "required": ["name", "phone", "email"]
         }
       }
     }
