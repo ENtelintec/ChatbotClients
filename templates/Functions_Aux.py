@@ -121,6 +121,7 @@ def message_handler(msg: str, context: list, chat_id: str, sender_id: str, assis
             msg, instructions=instructions, client_tag=client_name, thread_id=thread_id, assistant_id=assistant_id)
         command, res, flag_search = extract_command(res)
         print("answer: {} command: {} flag_search: {}".format(res, command, flag_search))
+    flags = flags if flags is not None else {"is_end": False}
     return res, command, context, thread_id, assistant_id, flags
 
 
@@ -142,8 +143,8 @@ def retrieve_conversation(sender_id: str) -> tuple:
     if flag and len(my_result) > 0:
         for item in my_result:
             chat_id = item[0]
-            metadata = item[1]
-            content = item[2]
+            metadata = json.loads(item[2])
+            content = json.loads(item[1])
             timestamp_end = metadata.get("timestamp_end")
             if timestamp_end == "":
                 continue

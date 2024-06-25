@@ -18,7 +18,7 @@ def connectionDB():
             host=secrets[host_db_default],
             user=secrets[user_db_default],
             password=secrets[pass_db_default],
-            database="sql_telintec",
+            # database="sql_telintec",
         )
         if connection.is_connected():
             return connection
@@ -42,7 +42,6 @@ def execute_sql(sql: str, values: tuple = None, type_sql=1):
             host=secrets[host_db_default],
             user=secrets[user_db_default],
             password=secrets[pass_db_default],
-            database="sql_telintec",
         )
         my_cursor = mydb.cursor(buffered=True)
     except Exception as e:
@@ -99,7 +98,6 @@ def execute_sql_multiple(sql: str, values_list: list = None, type_sql=1):
             host=secrets[host_db_default],
             user=secrets[user_db_default],
             password=secrets[pass_db_default],
-            database="sql_telintec",
         )
         my_cursor = mydb.cursor(buffered=True)
     except Exception as e:
