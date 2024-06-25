@@ -9,7 +9,7 @@ from flask_restx import Api
 model_openai = "gpt-4-0613"
 # local_father_path_dpb = "C:/Users/Edisson/Telintec Dropbox/SOFTWARE TELINTEC"
 secrets = dotenv_values(".env")
-api = Api()
+api = Api(doc='/IA/doc')
 # url_api = "http://127.0.0.1:5000/AuthAPI/api/v1/auth/loginUP"
 # url_api = "https://ec2-3-144-117-149.us-east-2.compute.amazonaws.com/AuthAPI/api/v1/auth/loginUP"
 # IMG_PATH_COLLAPSING = Path("./img")

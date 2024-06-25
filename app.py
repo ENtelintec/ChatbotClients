@@ -84,7 +84,7 @@ def whatsapp_webhook_handler():
         return jsonify({"status": "ok", "message": "Not a permitted method"}), 405
 
 
-api.init_app(app)
+api.init_app(app, doc='/IA/doc')
 
 if __name__ == '__main__':
     app.run()
