@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 from static.extensions import api, secrets, client_id
-from templates.Functions_Aux import parse_message, retrieve_conversation, message_handler, send_reply_whatsapp
+from templates.Functions_Aux import parse_message, retrieve_conversation, message_handler, send_reply_whatsapp, \
+    write_log_file
 from templates.controllers.chats_controller import upd_chats_msg, insert_chat, finalize_chat
 
 app = Flask(__name__)
@@ -73,9 +74,7 @@ def whatsapp_webhook_handler():
                 if flags["is_end"]:
                     flag, error, result = finalize_chat(chat_id, metadata)
                     txt += f"finalize chat------flag: {flag}, error: {error}, result: {result}\n"
-            with open("log.txt", "a") as f:
-                f.write("-----------------stesps-----------------\n")
-                f.write(txt)
+            write_log_file(txt)
             return jsonify({"status": "success"}), 200
         except KeyError as e:
             print("keyError of:" + str(e))

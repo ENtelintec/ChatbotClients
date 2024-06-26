@@ -38,7 +38,7 @@ def insert_chat(context: list, sender_id: str, client_id: str, platform: str, th
     if not flag:
         print(f"Error: {str(error)}")
     else:
-        print("Insert successful")
+        pass
     return flag, error, result, metadata
 
 
@@ -62,7 +62,7 @@ def upd_chats_msg(chat_id: str, content: list, metadata):
         print(f"Error: {str(error)}")
         print("Update failed")
     else:
-        print("Update successful")
+        pass
     return flag, error, result
 
 
@@ -97,5 +97,5 @@ def finalize_chat(chat_id: str, metadata: dict):
     if not flag:
         print(f"Error: {str(error)}")
     else:
-        print("Finalize successful")
+        pass
     return flag, error, result

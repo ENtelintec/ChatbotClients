@@ -2,7 +2,6 @@
 __author__ = "Edisson Naula"
 __date__ = "$ 02/nov./2023  at 17:32 $"
 
-
 from dotenv import dotenv_values
 from flask_restx import Api
 
@@ -25,3 +24,6 @@ dict_deps = {"Dirección": 1, "Operaciones": 2, "Administración": 3, "RRHH": 4,
 format_timestamps_filename = '%Y-%m-%d'
 client_id = 1
 client_tag = "doitconsulting"
+log_path = "./"
+flag_logs = True
+url_endpoint_doit = 'https://gptapi.mgnit.net/api/asistente'

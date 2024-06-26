@@ -82,7 +82,7 @@ def get_tool_outputs(required_actions):
     outputs = []
     all_flags = {}
     for tool in required_actions:
-        print(tool)
+        # print(tool)
         arguments = json.loads(tool.function.arguments)
         function_to_call = available_functions[tool.function.name]
         output, flags = function_to_call(**arguments)
@@ -116,6 +116,7 @@ def complete_required_actions(required_actions, thread_id, run_id):
 def retrieve_runs_openai(thread_id, run_id):
     e = None
     flags = None
+    txt = "Retriving runs\n"
     try:
         while True:
             runs = client.beta.threads.runs.retrieve(
@@ -123,9 +124,12 @@ def retrieve_runs_openai(thread_id, run_id):
                 run_id=run_id
             )
             if runs.status == "requires_action":
+                txt += "Waiting for required actions\n"
                 completed_actions, error, flags = complete_required_actions(
                     runs.required_action.submit_tool_outputs.tool_calls, thread_id, run_id)
+                txt += f"Completed required actions: {str(runs.required_action.submit_tool_outputs.tool_calls)}\n"
                 if error is not None:
+                    txt += f"Error at completing required tool: {error}\n"
                     print("Error at completing required tool: ", error)
                     runs = None
                     e = error
@@ -134,8 +138,11 @@ def retrieve_runs_openai(thread_id, run_id):
                 break
             time.sleep(0.5)
     except Exception as e:
+        txt += f"Error at retrieving runs: {e}"
         print("Error at retrieving runs ", e)
         runs = None
+    from templates.Functions_Aux import write_log_file
+    write_log_file(txt)
     return runs, e, flags
 
 
@@ -162,7 +169,7 @@ def get_response_chat_completion(messages: list) -> str:
     # while 1:
     client_1 = OpenAI(api_key=secrets.get("OPENAI_API_KEY_1"))
     try:
-        print(messages)
+        # print(messages)
         out = client_1.chat.completions.create(
             # model="gpt-3.5-turbo",
             model="gpt-4-0613",
@@ -197,6 +204,7 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
     flags = None
     answer = ""
     files_assistat_ids = []
+    txt = "Getting response assitent\n"
     if files is None:
         files = data_av_tools_files["files"]
         for i, item in enumerate(files):
@@ -208,20 +216,23 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
                     files_assistat_ids.append(item["id"])
                     break
     first_flag = False
+    txt += "files: " + str(files) + "\n"
     if thread_id is None:
         first_flag = True
+        txt += "first time\n"
         try:
             assistant, error = create_assistant_openai(files=files_assistat_ids, instructions=instructions, tools=tools)
             assistant_id = assistant.id
-            print("first time creation")
+            # print("first time creation")
         except Exception as e:
             print("Error at creating assistant on openAI: ", e)
             return files, "Error at creating assistant on openAI", "None", "None", flags
     try:
+        txt += "thread_id: " + str(thread_id) + " assisstant_id " + str(assistant_id) + "\n"
         if first_flag:
             thread, error = create_thread_openai()
             thread_id = thread.id
-            print("first time")
+            # print("first time")
         message_obj, error = create_message_openai(thread_id, message, "user")
         run, error = run_thread_openai(thread_id, assistant_id)
         run, error, flags = retrieve_runs_openai(thread_id, run.id)
@@ -233,8 +244,11 @@ def get_response_assistant(message: str, filename: str = None, files: list = Non
             break
         # answer = msgs
     except Exception as e:
+        txt += "Catching Error at getting response on openAI: " + str(e) + "\n"
         print("Catching Error at getting response on openAI: ", e)
         return files, f"Catching Error at getting response on openAI: {e}", "None", "None", flags
+    from templates.Functions_Aux import write_log_file
+    write_log_file(txt)
     return files, answer, thread_id, assistant_id, flags
 
 
@@ -276,7 +290,7 @@ def upload_file_openai(file_path: str):
                 for item in files:
                     if item.id == file.id:
                         if item.status == "processed":
-                            print("File processed")
+                            # print("File processed")
                             process = True
                             break
                         else:
