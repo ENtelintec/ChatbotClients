@@ -24,21 +24,18 @@ def server_static(path):
 @app.route("/IA/api/v1/whatsapp", methods=["POST", "GET"])
 def whatsapp_webhook_handler():
     # hub challenge verification
-    print(secrets['VERIFY_TOKEN_WA'])
+    txt = "----------------------api whatsapp----------------------\n"
     if request.method == "GET":
-        print(request.args.get('hub.verify_token'))
-        with open("log.txt", "a") as f:
-            f.write("request detected: " + str(request.args.get('hub.verify_token')) + "\n")
+        txt += "request: " + str(request.args.get('hub.verify_token')) + "\n"
         if request.args.get('hub.verify_token') == secrets['VERIFY_TOKEN_WA']:
-            with open("log.txt", "a") as f:
-                f.write("request accepted: " + str(request.args.get('hub.challenge')) + "\n")
+            txt += "request accepted: " + str(request.args.get('hub.challenge')) + "\n"
             return request.args.get('hub.challenge')
         else:
             return "Error de autentificación", 403
     elif request.method == 'POST':
+        txt += "request: " + str(request.get_json()) + "\n"
         data = request.get_json()
         # parse message
-        txt = ""
         try:
             sender_id, msg_txt, timestamp, attachment, is_status = parse_message(data, "whatsapp")
             if is_status:
@@ -78,8 +75,10 @@ def whatsapp_webhook_handler():
             return jsonify({"status": "success"}), 200
         except KeyError as e:
             print("keyError of:" + str(e))
+            write_log_file(txt)
             return jsonify({"status": "error"}), 200
     else:
+        write_log_file(txt)
         return jsonify({"status": "ok", "message": "Not a permitted method"}), 405
 
 
